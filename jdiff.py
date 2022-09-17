@@ -49,14 +49,20 @@ def print_comma(yes):
     return True
 
 
-def item_hash(obj):
-    """ Returns hash string for list, dict, str, bool, int, float and None """
+def item_hash(obj, order):
+    """ Returns hash string for list, dict, str, bool, int, float and None.
+    Second parameter determines behavior of lists: when order=True a list
+    handled as it is. When order=False lists will be sorted during hash
+    calculation """
     obj_type = type(obj).__name__[0]
     if obj_type == "d":  # dict
-        return "d"+(
-            "".join([F"{k}{item_hash(obj[k])}" for k in sorted(obj.keys())]))
+        dct = [F"{k}:{item_hash(obj[k], order)}" for k in sorted(obj.keys())]
+        return "{"+("".join(dct)) + "}"
     if obj_type == "l":  # list
-        return "l"+("".join(sorted([item_hash(i) for i in obj])))
+        lst = [item_hash(i, order) for i in obj]
+        if not order:
+            lst = sorted(lst)
+        return "["+("".join(lst)) + "]"
     if obj_type == "N":  # None type - nill in json
         return "N"
     if obj_type == "b":  # bool
@@ -114,7 +120,7 @@ def print_arr_items(prefix, items):
 
 def print_arr_item_diff(prefix, item_a, item_b):
     """ print diff between two array items """
-    if item_hash(item_a) == item_hash(item_b):
+    if item_hash(item_a, True) == item_hash(item_b, True):
         print_item_prefixed(F'\n  {prefix}', item_a)
     else:
         print_item_prefixed(F'\n- {prefix}', item_a)
@@ -143,21 +149,23 @@ def print_arr_diff_ordered(prefix, item_a, item_b):
         if len(item_a) > len(item_b):
             bigger = item_a
             smaller = item_b
-            rest = "+"
+            rest = "-"
         else:
             bigger = item_b
             smaller = item_a
-            rest = "-"
+            rest = "+"
         for i in range(len(smaller)):
             print_arr_item_diff(prefix, item_a[i], item_b[i])
         for i in range(len(smaller), len(bigger)):
-            print_item(F'{rest} {prefix}', item_a)
+            pre = F'\n{rest} {prefix}'
+            print_(pre)
+            print_item(pre, bigger[i])
 
 
 def print_arr_diff_unordered(prefix, item_a, item_b):
     """ print diff between arrays items ignoring the arrays order """
-    hashed = {item_hash(i): i for i in item_a}
-    hashed_b = {item_hash(i): i for i in item_b}
+    hashed = {item_hash(i, False): i for i in item_a}
+    hashed_b = {item_hash(i, False): i for i in item_b}
     a_set = set(hashed.keys())
     common_set = a_set.intersection(hashed_b.keys())
     hashed.update(hashed_b)
